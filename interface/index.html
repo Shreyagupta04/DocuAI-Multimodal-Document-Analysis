@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DocuAI — Document Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F1EDE4;
+    --paper-raised: #FAF8F2;
+    --ink: #1B2A3D;
+    --ink-soft: #4A5A6B;
+    --hairline: #D9D2C2;
+    --hairline-strong: #C4BBA4;
+    --blueprint: #2F5D8A;
+    --blueprint-tint: #E3EBF2;
+    --amber: #C97A2B;
+    --amber-tint: #F5E6D3;
+    --green: #3F6E52;
+    --green-tint: #E4EDE7;
+    --red: #A3402E;
+    --red-tint: #F3E2DD;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    height: 100vh;
+  }
+
+  /* ---------------- Sidebar: the dossier ---------------- */
+  .sidebar {
+    background: var(--paper-raised);
+    border-right: 1px solid var(--hairline);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .brand {
+    padding: 22px 20px 18px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .brand-mark {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 19px;
+    letter-spacing: 0.01em;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .brand-mark .dot { width: 8px; height: 8px; background: var(--amber); border-radius: 50%; flex: none; }
+
+  .brand-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 4px;
+    letter-spacing: 0.03em;
+  }
+
+  .upload-zone {
+    margin: 16px 20px;
+    border: 1.5px dashed var(--hairline-strong);
+    border-radius: 4px;
+    padding: 18px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--blueprint);
+    background: var(--blueprint-tint);
+  }
+  .upload-zone input { display: none; }
+  .upload-zone-label {
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+  .upload-zone-hint {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    opacity: 0.7;
+    margin-top: 4px;
+  }
+
+  .doc-name-field {
+    margin: 0 20px 16px;
+  }
+  .doc-name-field input {
+    width: 100%;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 7px 9px;
+    border: 1px solid var(--hairline);
+    border-radius: 3px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .doc-name-field input:focus { outline: none; border-color: var(--blueprint); }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    padding: 0 20px;
+    margin-bottom: 8px;
+  }
+
+  .doc-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 12px 12px;
+  }
+
+  .doc-card {
+    background: var(--paper);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.12s ease;
+  }
+  .doc-card:hover { border-color: var(--hairline-strong); }
+  .doc-card.active { border-color: var(--blueprint); background: var(--blueprint-tint); }
+
+  .doc-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 3px;
+    word-break: break-word;
+  }
+  .doc-card-meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+  }
+
+  .empty-dock {
+    padding: 20px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+
+  /* ---------------- Main: the query log ---------------- */
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .main-header {
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--hairline);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .main-header-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .main-header-count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+
+  .thread {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .thread-empty {
+    margin: auto;
+    text-align: center;
+    color: var(--ink-soft);
+    max-width: 360px;
+  }
+  .thread-empty-icon {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 28px;
+    color: var(--hairline-strong);
+    margin-bottom: 10px;
+  }
+  .thread-empty p { font-size: 13px; line-height: 1.6; }
+
+  .entry-question {
+    align-self: flex-end;
+    max-width: 72%;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 15px;
+    border-radius: 6px 6px 2px 6px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .entry-answer {
+    align-self: flex-start;
+    max-width: 84%;
+  }
+
+  .answer-block {
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline);
+    border-radius: 2px 6px 6px 6px;
+    padding: 14px 16px;
+    position: relative;
+  }
+
+  .answer-page-tag {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    color: var(--blueprint);
+    background: var(--blueprint-tint);
+    border: 1px solid var(--blueprint);
+    border-radius: 2px;
+    padding: 2px 7px;
+    margin: 0 6px 8px 0;
+  }
+
+  .answer-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ink);
+    white-space: pre-wrap;
+  }
+
+  .answer-page-thumb {
+    margin-top: 10px;
+    border: 1px solid var(--hairline);
+    border-radius: 3px;
+    overflow: hidden;
+    max-width: 220px;
+    cursor: zoom-in;
+  }
+  .answer-page-thumb img { width: 100%; display: block; }
+
+  .no-match {
+    color: var(--red);
+    background: var(--red-tint);
+    border: 1px solid var(--red);
+    border-radius: 2px;
+    padding: 8px 12px;
+    font-size: 13px;
+    display: inline-block;
+  }
+
+  .thinking {
+    align-self: flex-start;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .thinking-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--amber); animation: pulse 1.1s infinite ease-in-out; }
+  .thinking-dot:nth-child(2) { animation-delay: 0.15s; }
+  .thinking-dot:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+
+  .composer {
+    border-top: 1px solid var(--hairline);
+    padding: 16px 32px 20px;
+  }
+  .composer form {
+    display: flex;
+    gap: 10px;
+  }
+  .composer input[type=text] {
+    flex: 1;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 11px 14px;
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    background: var(--paper-raised);
+    color: var(--ink);
+  }
+  .composer input[type=text]:focus { outline: none; border-color: var(--blueprint); }
+  .composer input[type=text]:disabled { opacity: 0.5; }
+  .composer button {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 13.5px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 4px;
+    background: var(--ink);
+    color: var(--paper);
+    cursor: pointer;
+  }
+  .composer button:disabled { opacity: 0.4; cursor: default; }
+  .composer-hint {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    margin-top: 8px;
+    opacity: 0.75;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 13px;
+    padding: 10px 18px;
+    border-radius: 4px;
+    z-index: 50;
+  }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--hairline-strong); border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar: dossier -->
+  <div class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><span class="dot"></span>DocuAI</div>
+      <div class="brand-sub">STRUCTURED DOCUMENT INTELLIGENCE</div>
+    </div>
+
+    <label class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept=".pdf,.docx,.html,.md,.csv" />
+      <div class="upload-zone-label" id="uploadLabel">Drop a document, or click to upload</div>
+      <div class="upload-zone-hint">PDF · DOCX · HTML · MD · CSV</div>
+    </label>
+
+    <div class="doc-name-field">
+      <input type="text" id="docNameInput" placeholder="Document name (optional)" />
+    </div>
+
+    <div class="section-label">Parsed documents</div>
+    <div class="doc-list" id="docList">
+      <div class="empty-dock">Nothing parsed yet in this session. Upload a document above — it'll be split into pages, described by the vision model, and written into Neo4j.</div>
+    </div>
+  </div>
+
+  <!-- Main: query log -->
+  <div class="main">
+    <div class="main-header">
+      <div class="main-header-title" id="activeDocTitle">No document selected</div>
+      <div class="main-header-count" id="activeDocCount"></div>
+    </div>
+
+    <div class="thread" id="thread">
+      <div class="thread-empty">
+        <div class="thread-empty-icon">⌗</div>
+        <p>Upload a document on the left, then ask questions about it here. Answers are grounded on the actual matched page image, with page references cited.</p>
+      </div>
+    </div>
+
+    <div class="composer">
+      <form id="askForm">
+        <input type="text" id="questionInput" placeholder="Ask about the active document…" disabled autocomplete="off" />
+        <button type="submit" id="askButton" disabled>Ask</button>
+      </form>
+      <div class="composer-hint">Retrieval matches pages by description, then answers grounded on the actual page image.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = '';
+let documents = {};       // document_name -> {page_count}
+let activeDoc = null;
+
+const docList = document.getElementById('docList');
+const fileInput = document.getElementById('fileInput');
+const uploadZone = document.getElementById('uploadZone');
+const uploadLabel = document.getElementById('uploadLabel');
+const docNameInput = document.getElementById('docNameInput');
+const thread = document.getElementById('thread');
+const activeDocTitle = document.getElementById('activeDocTitle');
+const activeDocCount = document.getElementById('activeDocCount');
+const questionInput = document.getElementById('questionInput');
+const askButton = document.getElementById('askButton');
+const askForm = document.getElementById('askForm');
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3600);
+}
+
+function renderDocList() {
+  const names = Object.keys(documents);
+  if (names.length === 0) {
+    docList.innerHTML = '<div class="empty-dock">Nothing parsed yet in this session. Upload a document above — it\'ll be split into pages, described by the vision model, and written into Neo4j.</div>';
+    return;
+  }
+  docList.innerHTML = names.map(name => {
+    const d = documents[name];
+    const cls = name === activeDoc ? 'doc-card active' : 'doc-card';
+    return `<div class="${cls}" data-doc="${name}">
+      <div class="doc-card-title">${name}</div>
+      <div class="doc-card-meta">${d.page_count} page${d.page_count === 1 ? '' : 's'} parsed</div>
+    </div>`;
+  }).join('');
+  docList.querySelectorAll('.doc-card').forEach(card => {
+    card.addEventListener('click', () => selectDoc(card.dataset.doc));
+  });
+}
+
+function selectDoc(name) {
+  activeDoc = name;
+  activeDocTitle.textContent = name;
+  activeDocCount.textContent = documents[name].page_count + ' pages';
+  questionInput.disabled = false;
+  askButton.disabled = false;
+  thread.innerHTML = '<div class="thread-empty"><div class="thread-empty-icon">⌗</div><p>Ask a question about <strong>' + name + '</strong> below.</p></div>';
+  renderDocList();
+}
+
+// ---- Upload ----
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) uploadFile(fileInput.files[0]);
+});
+['dragover'].forEach(evt => uploadZone.addEventListener(evt, e => { e.preventDefault(); uploadZone.classList.add('dragover'); }));
+['dragleave', 'drop'].forEach(evt => uploadZone.addEventListener(evt, e => { e.preventDefault(); uploadZone.classList.remove('dragover'); }));
+uploadZone.addEventListener('drop', e => {
+  if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]);
+});
+
+async function uploadFile(file) {
+  uploadLabel.textContent = `Parsing ${file.name}… this can take a while (one vision call per page)`;
+  const form = new FormData();
+  form.append('file', file);
+  const customName = docNameInput.value.trim();
+  if (customName) form.append('document_name', customName);
+
+  try {
+    const res = await fetch(`${API}/api/documents/upload`, { method: 'POST', body: form });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Upload failed (${res.status})`);
+    }
+    const data = await res.json();
+    documents[data.document_name] = { page_count: data.page_count };
+    selectDoc(data.document_name);
+    showToast(`Parsed ${data.page_count} pages from ${data.document_name}`);
+  } catch (e) {
+    showToast(e.message);
+  } finally {
+    uploadLabel.textContent = 'Drop a document, or click to upload';
+    fileInput.value = '';
+  }
+}
+
+// ---- Ask ----
+askForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const question = questionInput.value.trim();
+  if (!question || !activeDoc) return;
+
+  if (thread.querySelector('.thread-empty')) thread.innerHTML = '';
+
+  const qEl = document.createElement('div');
+  qEl.className = 'entry-question';
+  qEl.textContent = question;
+  thread.appendChild(qEl);
+
+  const thinkingEl = document.createElement('div');
+  thinkingEl.className = 'thinking';
+  thinkingEl.innerHTML = '<span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span> matching pages and reading the grounded image…';
+  thread.appendChild(thinkingEl);
+  thread.scrollTop = thread.scrollHeight;
+
+  questionInput.value = '';
+  questionInput.disabled = true;
+  askButton.disabled = true;
+
+  try {
+    const res = await fetch(`${API}/api/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ document_name: activeDoc, question }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Query failed (${res.status})`);
+    }
+    const data = await res.json();
+    thinkingEl.remove();
+    renderAnswer(data);
+  } catch (e) {
+    thinkingEl.remove();
+    const errEl = document.createElement('div');
+    errEl.className = 'entry-answer';
+    errEl.innerHTML = `<div class="no-match">${e.message}</div>`;
+    thread.appendChild(errEl);
+  } finally {
+    questionInput.disabled = false;
+    askButton.disabled = false;
+    questionInput.focus();
+    thread.scrollTop = thread.scrollHeight;
+  }
+});
+
+function renderAnswer(data) {
+  const wrap = document.createElement('div');
+  wrap.className = 'entry-answer';
+
+  if (!data.matched_pages || data.matched_pages.length === 0) {
+    wrap.innerHTML = `<div class="no-match">No relevant page found for this question.</div>`;
+    thread.appendChild(wrap);
+    return;
+  }
+
+  const block = document.createElement('div');
+  block.className = 'answer-block';
+
+  let html = '';
+  for (const tag of data.matched_pages) {
+    html += `<span class="answer-page-tag">PAGE ${tag}</span>`;
+  }
+  html += '<div>';
+  for (const r of data.results) {
+    html += `<div class="answer-text">${escapeHtml(r.answer)}</div>`;
+    html += `<div class="answer-page-thumb"><img src="${API}/api/pages/${encodeURIComponent(activeDoc)}/${r.page_no}" loading="lazy" onerror="this.parentElement.style.display='none'" /></div>`;
+  }
+  html += '</div>';
+  block.innerHTML = html;
+  wrap.appendChild(block);
+  thread.appendChild(wrap);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ---- Load any documents already parsed this server session ----
+(async function init() {
+  try {
+    const res = await fetch(`${API}/api/documents`);
+    if (res.ok) {
+      const docs = await res.json();
+      docs.forEach(d => documents[d.document_name] = { page_count: d.page_count });
+      renderDocList();
+    }
+  } catch (e) { /* server not up yet — fine */ }
+})();
+</script>
+
+</body>
+</html>
